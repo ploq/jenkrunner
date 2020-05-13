@@ -1,6 +1,10 @@
+JENKRUNNER
+---
+
 A simple tool for running Jenkins jobs from the command line.
 
 Usage:
+```console
 usage: jenkrunner [-h] -j JOB_NAME [-s] [--show-time] --url JENKINS_URL --token
                JOB_TOKEN
                [argument [argument ...]]
@@ -16,4 +20,4 @@ optional arguments:
   --show-time
   --url JENKINS_URL
   --token JOB_TOKEN
-
+```
