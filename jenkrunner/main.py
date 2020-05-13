@@ -1,0 +1,57 @@
+from argparse import ArgumentParser
+import sys
+try:
+    from pipes import quote as sh_quote
+except ImportError:
+    from shlex import quote as sh_quote
+
+from jenkrunner.lib.jenkins import JenkinsRunner
+from jenkrunner.lib.login import LoginInfoFile
+
+
+def _parse_jenkins_arguments(arguments):
+    def _handle_file_val(val):
+        return open(val[1:])
+
+    def _handle_str_val(val):
+        return sh_quote(val)
+
+    args = {}
+    files = {}
+    for argument in arguments:
+        key, val = argument.split("=")
+        if val.startswith("@"):
+            files[key] = _handle_file_val(val)
+        else:
+            args[key] = _handle_str_val(val)
+    return args, files
+
+
+def main(argv):
+    parser = ArgumentParser()
+    parser.add_argument("-j", "--job", dest="job_name", required=True)
+    parser.add_argument("argval", nargs="*", metavar="argument",
+                        help="Arguments to Jenkins job. Is written as 'arg=val'. Handles files with @filename")
+    parser.add_argument("-s", "--show", dest="show", action="store_true")
+    parser.add_argument("--show-time", dest="show_time", action="store_true")
+    parser.add_argument("--url", dest="jenkins_url", required=True)
+    parser.add_argument("--token", dest="job_token", required=True)
+    args = parser.parse_args(argv)
+
+    username, password = LoginInfoFile("~/.jenkins/login.txt").get_login_for_url(args.jenkins_url)
+
+    jenkins = JenkinsRunner(args.jenkins_url, username, password)
+
+    if args.argval:
+        jenk_args, jenk_files = _parse_jenkins_arguments(args.argval)
+        build = jenkins.start_parameterized_job(args.job_name, args.job_token, parameters=jenk_args, files=jenk_files)
+        if args.show:
+            build.show_progressive_console_output(args.show_time)
+    else:
+        build = jenkins.start_job(args.job_name, args.job_token)
+        if args.show:
+            build.show_progressive_console_output(args.show_time)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
